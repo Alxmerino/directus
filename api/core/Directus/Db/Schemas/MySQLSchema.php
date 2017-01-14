@@ -168,9 +168,15 @@ class MySQLSchema extends AbstractSchema
         );
 
         $select->where([
-            'T.TABLE_NAME' => $tableName,
             'T.TABLE_SCHEMA' => $this->adapter->getCurrentSchema()
         ]);
+
+        // @hotfix: This solve the problem fetching a table with capital letter
+        $where = $select->where->nest();
+        $where->equalTo('T.TABLE_NAME', $tableName);
+        $where->OR;
+        $where->equalTo('T.TABLE_NAME', $tableName);
+        $where->unnest();
 
         $sql = new Sql($this->adapter);
         $statement = $sql->prepareStatementForSqlObject($select);
@@ -196,6 +202,7 @@ class MySQLSchema extends AbstractSchema
             'id' => 'COLUMN_NAME',
             'column_name' => 'COLUMN_NAME',
             'type' => new Expression('UCASE(C.DATA_TYPE)'),
+            'key' => 'COLUMN_KEY',
             'char_length' => 'CHARACTER_MAXIMUM_LENGTH',
             'is_nullable' => 'IS_NULLABLE',
             'default_value' => 'COLUMN_DEFAULT',
@@ -242,6 +249,7 @@ class MySQLSchema extends AbstractSchema
             'id' => 'column_name',
             'column_name',
             'type' => new Expression('UCASE(data_type)'),
+            'key' => new Expression('NULL'),
             'char_length' => new Expression('NULL'),
             'is_nullable' => new Expression('"NO"'),
             'default_value' => new Expression('NULL'),
@@ -294,12 +302,12 @@ class MySQLSchema extends AbstractSchema
             'column_name' => 'COLUMN_NAME',
             'sort' => new Expression('IFNULL(sort, ORDINAL_POSITION)'),
             'type' => new Expression('UCASE(C.DATA_TYPE)'),
+            'key' => 'COLUMN_KEY',
             'char_length' => 'CHARACTER_MAXIMUM_LENGTH',
             'is_nullable' => 'IS_NULLABLE',
             'default_value' => 'COLUMN_DEFAULT',
             'comment' => new Expression('IFNULL(comment, COLUMN_COMMENT)'),
-            'column_type' => 'COLUMN_TYPE',
-            'column_key' => 'COLUMN_KEY'
+            'column_type' => 'COLUMN_TYPE'
         ]);
 
         $selectOne->from(['C' => new TableIdentifier('COLUMNS', 'INFORMATION_SCHEMA')]);
@@ -338,12 +346,12 @@ class MySQLSchema extends AbstractSchema
             'column_name',
             'sort',
             'type' => new Expression('UCASE(data_type)'),
+            'key' => new Expression('NULL'),
             'char_length' => new Expression('NULL'),
             'is_nullable' => new Expression('"NO"'),
             'default_value' => new Expression('NULL'),
             'comment',
             'column_type' => new Expression('NULL'),
-            'column_key' => new Expression('NULL'),
             'ui',
             'hidden_list',
             'hidden_input',
